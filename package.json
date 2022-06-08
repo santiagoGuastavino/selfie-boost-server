@@ -5,17 +5,20 @@
   "main": "./src/app.js",
   "type": "module",
   "scripts": {
-    "start": "node ./src/app.js",
+    "dev": "cross-env NODE_ENV=development nodemon",
+    "start": "NODE_ENV=production node ./src/app.js",
     "lint": "eslint . --fix"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "bcrypt": "^5.0.1",
     "dotenv": "^16.0.1",
     "express": "^4.18.1",
     "mongoose": "^6.3.5"
   },
   "devDependencies": {
+    "cross-env": "^7.0.3",
     "eslint": "^8.17.0",
     "eslint-config-standard": "^17.0.0",
     "eslint-plugin-import": "^2.26.0",
