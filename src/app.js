@@ -1,5 +1,6 @@
 import express from 'express'
 import mongoose from 'mongoose'
+import cors from 'cors'
 import 'dotenv/config'
 
 import usersRouter from './routes/users.js'
@@ -8,6 +9,7 @@ import blogsRouter from './routes/blogs.js'
 const app = express()
 app.use(express.json())
 app.use(express.urlencoded({ extended: false }))
+app.use(cors())
 
 app.use('/user', usersRouter)
 app.use('/blog', blogsRouter)
