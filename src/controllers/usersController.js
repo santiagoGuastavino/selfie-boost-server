@@ -29,7 +29,13 @@ export async function signUp (req, res, next) {
       try {
         await newUser.save()
         try {
-          return res.status(201).json({ message: 'User created.' })
+          const user = newUser.toObject()
+          delete user.password
+          return res.status(201).json({
+            ok: true,
+            message: 'User created.',
+            user
+          })
         } catch (err) {
           next(err)
         }
@@ -57,7 +63,13 @@ export async function login (req, res, next) {
         next(new Error('Passwords do not match.'))
       } else {
         // login
-        return res.status(200).json({ message: 'Succesful login.' })
+        const user = loggingUser.toObject()
+        delete user.password
+        return res.status(200).json({
+          ok: true,
+          message: 'Succesful login.',
+          user
+        })
       }
     }
   } catch (err) {

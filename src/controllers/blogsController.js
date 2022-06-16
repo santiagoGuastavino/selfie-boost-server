@@ -3,7 +3,7 @@ import Blog from '../models/Blog.js'
 import User from '../models/User.js'
 
 export async function getAll (req, res, next) {
-  const blogs = await Blog.find()
+  const blogs = await Blog.find().populate('user').sort([['createdAt', 'descending']])
   try {
     return res.status(200).json(blogs)
   } catch (err) {
@@ -29,7 +29,10 @@ export async function create (req, res, next) {
       await userCreatingBlog.save({ session })
       await session.commitTransaction()
       try {
-        return res.status(201).json({ message: 'Blog created.' })
+        return res.status(201).json({
+          ok: true,
+          message: 'Blog created.'
+        })
       } catch (err) {
         next(err)
       }
@@ -50,7 +53,10 @@ export async function update (req, res, next) {
     image
   })
   try {
-    return res.status(200).json({ message: 'Blog updated.' })
+    return res.status(200).json({
+      ok: true,
+      message: 'Blog updated.'
+    })
   } catch (err) {
     next(err)
   }
@@ -73,7 +79,10 @@ export async function deleteOne (req, res, next) {
     await blogToDelete.user.blogs.pull(blogToDelete)
     await blogToDelete.user.save()
     try {
-      return res.status(200).json({ message: 'Blog deleted.' })
+      return res.status(200).json({
+        ok: true,
+        message: 'Blog deleted.'
+      })
     } catch (err) {
       next(err)
     }
@@ -85,8 +94,9 @@ export async function deleteOne (req, res, next) {
 export async function getByUserId (req, res, next) {
   const { id } = req.params
   const userBlogs = await User.findById(id).populate('blogs')
+  console.log(userBlogs)
   try {
-    return res.status(200).json(userBlogs)
+    return res.status(200).json(userBlogs.blogs)
   } catch (err) {
     next(err)
   }

@@ -22,6 +22,9 @@ const userSchema = new Schema({
     ref: 'Blog',
     required: true
   }]
+},
+{
+  timestamps: true
 })
 
 export default mongoose.model('User', userSchema)
