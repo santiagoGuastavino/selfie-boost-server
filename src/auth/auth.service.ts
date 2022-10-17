@@ -17,13 +17,13 @@ import * as bcrypt from 'bcrypt';
 @Injectable()
 export class AuthService {
   constructor(
-    @InjectModel(User.name) private readonly userModel: Model<User>,
+    @InjectModel(User.name) private readonly usersModel: Model<User>,
     private jwtService: JwtService,
   ) {}
 
   async login(payload: LoginDto) {
     const { email, password } = payload;
-    const userToLogin = await this.userModel.findOne({
+    const userToLogin = await this.usersModel.findOne({
       email,
     });
 
@@ -38,7 +38,6 @@ export class AuthService {
     const passwordsMatch = await bcrypt.compare(password, userToLogin.password);
     if (passwordsMatch) {
       const jwtPayload = { email: userToLogin.email, sub: userToLogin._id };
-
       const secret = process.env.JWT_SECRET;
 
       const token = this.jwtService.sign(jwtPayload, {
@@ -61,7 +60,7 @@ export class AuthService {
     try {
       const { email, password, name } = payload;
 
-      const userToBeCreated = await this.userModel.findOne({
+      const userToBeCreated = await this.usersModel.findOne({
         email,
       });
 
@@ -72,7 +71,7 @@ export class AuthService {
           error: 'Conflict',
         });
       } else {
-        const newUser = await this.userModel.create({
+        const newUser = await this.usersModel.create({
           email,
           password: await bcrypt.hash(password, 10),
           name,
@@ -81,7 +80,6 @@ export class AuthService {
         await newUser.save();
 
         const jwtPayload = { email: newUser.email, sub: newUser._id };
-
         const secret = process.env.JWT_SECRET;
 
         const token = this.jwtService.sign(jwtPayload, {
