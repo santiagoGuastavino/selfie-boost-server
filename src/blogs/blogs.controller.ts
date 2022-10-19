@@ -27,26 +27,31 @@ export class BlogsController {
   }
 
   @Get()
-  @UseGuards(JwtAuthGuard)
   async readAllBlogs() {
     return this.blogsService.readAllBlogs();
+  }
+
+  @Patch()
+  @UseGuards(JwtAuthGuard)
+  async updateBlog(@Body() payload: UpdateBlogDto, @Request() req: any) {
+    return this.blogsService.updateBlog(payload, req);
+  }
+
+  @Delete()
+  @UseGuards(JwtAuthGuard)
+  async deleteBlog(@Body() payload: DeleteBlogDto, @Request() req: any) {
+    return this.blogsService.deleteBlog(payload, req);
+  }
+
+  @Get('user')
+  @UseGuards(JwtAuthGuard)
+  async readUserBlogs(@Request() req: any) {
+    return this.blogsService.readUserBlogs(req);
   }
 
   @Get(':_id')
   @UseGuards(JwtAuthGuard)
   async readOneBlog(@Param() payload: ReadOneBlogDto) {
     return this.blogsService.readOneBlog(payload);
-  }
-
-  @Patch()
-  @UseGuards(JwtAuthGuard)
-  async updateBlog(@Body() payload: UpdateBlogDto) {
-    return this.blogsService.updateBlog(payload);
-  }
-
-  @Delete()
-  @UseGuards(JwtAuthGuard)
-  async deleteBlog(@Body() payload: DeleteBlogDto) {
-    return this.blogsService.deleteBlog(payload);
   }
 }

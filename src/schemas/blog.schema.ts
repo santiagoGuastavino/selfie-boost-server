@@ -16,6 +16,9 @@ export class Blog {
 
   @Prop({ required: true })
   userId: string;
+
+  @Prop({ required: true })
+  name: string;
 }
 
 export const BlogSchema = SchemaFactory.createForClass(Blog);

@@ -1,4 +1,9 @@
-import { Injectable, HttpStatus, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  HttpStatus,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Exceptions } from 'src/common/enums/exceptions.enum';
@@ -15,9 +20,11 @@ export class BlogsService {
   ) {}
 
   async createBlog(payload: CreateBlogDto, req: any) {
+    console.log(typeof req);
     const blogToBeCreated = new this.blogsModel({
       ...payload,
       userId: req.user._id,
+      name: req.user.name,
     });
 
     await blogToBeCreated.save();
@@ -30,7 +37,6 @@ export class BlogsService {
 
   async readAllBlogs() {
     const blogs = await this.blogsModel.find();
-
     return {
       statusCode: HttpStatus.OK,
       message: 'OK',
@@ -48,7 +54,7 @@ export class BlogsService {
     };
   }
 
-  async updateBlog(payload: UpdateBlogDto) {
+  async updateBlog(payload: UpdateBlogDto, req: any) {
     const blogToUpdate = await this.blogsModel.findByIdAndUpdate(payload._id, {
       title: payload.title,
       description: payload.description,
@@ -63,13 +69,21 @@ export class BlogsService {
       });
     }
 
+    if (blogToUpdate.userId !== req.user._id) {
+      throw new ForbiddenException({
+        statusCode: HttpStatus.FORBIDDEN,
+        message: [Exceptions.CANT_UPDATE_BLOG],
+        error: 'Forbidden',
+      });
+    }
+
     return {
       statusCode: HttpStatus.OK,
       message: 'OK',
     };
   }
 
-  async deleteBlog(payload: DeleteBlogDto) {
+  async deleteBlog(payload: DeleteBlogDto, req: any) {
     const blogToDelete = await this.blogsModel.findByIdAndDelete(payload._id);
 
     if (!blogToDelete) {
@@ -80,9 +94,22 @@ export class BlogsService {
       });
     }
 
+    if (blogToDelete.userId !== req.user._id) {
+      throw new ForbiddenException({
+        statusCode: HttpStatus.FORBIDDEN,
+        message: [Exceptions.CANT_UPDATE_BLOG],
+        error: 'Forbidden',
+      });
+    }
+
     return {
       statusCode: HttpStatus.OK,
       message: 'OK',
     };
+  }
+
+  async readUserBlogs(req) {
+    const userBlogs = await this.blogsModel.find({ userId: req.user._id });
+    return userBlogs;
   }
 }
