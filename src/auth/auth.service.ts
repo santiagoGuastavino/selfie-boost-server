@@ -45,7 +45,7 @@ export class AuthService {
       });
 
       return {
-        acces_token: token,
+        access_token: token,
       };
     } else {
       throw new ConflictException({

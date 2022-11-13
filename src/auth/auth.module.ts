@@ -13,7 +13,7 @@ import { User, UserSchema } from 'src/schemas/user.schema';
     UsersModule,
     PassportModule,
     JwtModule.register({
-      signOptions: { expiresIn: '30m' },
+      signOptions: { expiresIn: '10s' },
     }),
     MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
   ],
