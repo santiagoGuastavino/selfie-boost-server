@@ -1,8 +1,7 @@
 {
-  "name": "blogs-mern-server",
+  "name": "blogs-server",
   "version": "0.0.1",
-  "description": "",
-  "author": "",
+  "author": "Santiago Guastavino",
   "private": true,
   "license": "UNLICENSED",
   "scripts": {

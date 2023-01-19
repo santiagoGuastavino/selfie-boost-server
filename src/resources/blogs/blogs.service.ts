@@ -7,7 +7,7 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Exceptions } from 'src/common/enums/exceptions.enum';
-import { Blog } from 'src/schemas/blog.schema';
+import { Blog } from 'src/model/schemas/blog.schema';
 import { CreateBlogDto } from './dtos/create-blog.dto';
 import { DeleteBlogDto } from './dtos/delete-blog.dto';
 import { ReadOneBlogDto } from './dtos/read-one-blog.dto';
@@ -20,7 +20,6 @@ export class BlogsService {
   ) {}
 
   async createBlog(payload: CreateBlogDto, req: any) {
-    console.log(typeof req);
     const blogToBeCreated = new this.blogsModel({
       ...payload,
       userId: req.user._id,
@@ -69,7 +68,7 @@ export class BlogsService {
       });
     }
 
-    if (blogToUpdate.userId !== req.user._id) {
+    if (blogToUpdate.user !== req.user._id) {
       throw new ForbiddenException({
         statusCode: HttpStatus.FORBIDDEN,
         message: [Exceptions.CANT_UPDATE_BLOG],
@@ -94,7 +93,7 @@ export class BlogsService {
       });
     }
 
-    if (blogToDelete.userId !== req.user._id) {
+    if (blogToDelete.user !== req.user._id) {
       throw new ForbiddenException({
         statusCode: HttpStatus.FORBIDDEN,
         message: [Exceptions.CANT_UPDATE_BLOG],
