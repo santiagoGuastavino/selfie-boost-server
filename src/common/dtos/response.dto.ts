@@ -12,7 +12,7 @@ export class ResponseDto {
     | 'Not Found'
     | 'Forbidden';
   payload: any;
-  errors: any[];
+  errors: ExceptionError[];
 
   constructor(
     statusCode = HttpStatus.OK,
@@ -33,4 +33,10 @@ export class ResponseDto {
     this.payload = payload;
     this.errors = errors;
   }
+}
+
+class ExceptionError {
+  property: string;
+  children: string[];
+  constraints: any;
 }

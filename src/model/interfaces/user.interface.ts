@@ -4,5 +4,10 @@ export interface IUser {
   _id: ObjectId;
   email: string;
   password: string;
-  name: string;
+  firstName: string;
+  lastName: string;
+  activationCode: number;
+  activated: boolean;
+  passwordRecoveryCode: number;
+  lastRefreshToken: number;
 }

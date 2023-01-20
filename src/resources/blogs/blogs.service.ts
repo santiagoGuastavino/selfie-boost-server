@@ -6,7 +6,6 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { Exceptions } from 'src/common/enums/exceptions.enum';
 import { Blog } from 'src/model/schemas/blog.schema';
 import { CreateBlogDto } from './dtos/create-blog.dto';
 import { DeleteBlogDto } from './dtos/delete-blog.dto';
@@ -63,7 +62,6 @@ export class BlogsService {
     if (!blogToUpdate) {
       throw new NotFoundException({
         statusCode: HttpStatus.NOT_FOUND,
-        message: [Exceptions.BLOG_NOT_FOUND],
         error: 'Not found',
       });
     }
@@ -71,7 +69,6 @@ export class BlogsService {
     if (blogToUpdate.user !== req.user._id) {
       throw new ForbiddenException({
         statusCode: HttpStatus.FORBIDDEN,
-        message: [Exceptions.CANT_UPDATE_BLOG],
         error: 'Forbidden',
       });
     }
@@ -88,7 +85,6 @@ export class BlogsService {
     if (!blogToDelete) {
       throw new NotFoundException({
         statusCode: HttpStatus.NOT_FOUND,
-        message: [Exceptions.BLOG_NOT_FOUND],
         error: 'Not found',
       });
     }
@@ -96,7 +92,6 @@ export class BlogsService {
     if (blogToDelete.user !== req.user._id) {
       throw new ForbiddenException({
         statusCode: HttpStatus.FORBIDDEN,
-        message: [Exceptions.CANT_UPDATE_BLOG],
         error: 'Forbidden',
       });
     }

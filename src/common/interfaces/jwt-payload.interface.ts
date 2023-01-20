@@ -1,6 +1,5 @@
+import { ObjectId } from 'mongodb';
+
 export interface JwtPayload {
-  email: string;
-  sub: string;
-  iat: number;
-  exp: number;
+  _id: ObjectId;
 }

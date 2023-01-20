@@ -1,26 +1,19 @@
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PassportStrategy } from '@nestjs/passport';
 import { Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
 import { JwtPayload } from 'src/common/interfaces/jwt-payload.interface';
-import { User } from 'src/model/schemas/user.schema';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor(@InjectModel(User.name) private readonly userModel: Model<User>) {
+  constructor() {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: process.env.JWT_SECRET,
+      secretOrKey: process.env.JWT_ACCESS_TOKEN_SECRET,
     });
   }
 
   async validate(payload: JwtPayload) {
-    const user = await this.userModel.findById(payload.sub);
-    return {
-      _id: user._id,
-      name: user.name,
-    };
+    return payload;
   }
 }

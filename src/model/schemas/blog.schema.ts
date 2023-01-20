@@ -5,15 +5,17 @@ import { User } from './user.schema';
 
 export type BlogDocument = Blog & Document;
 
-@Schema({ timestamps: true, versionKey: false })
+@Schema({ timestamps: false, versionKey: false })
 export class Blog {
   @Prop({
+    type: String,
     required: true,
     nullable: false,
   })
   title: string;
 
   @Prop({
+    type: String,
     required: false,
     nullable: true,
     default: null,
@@ -21,6 +23,7 @@ export class Blog {
   description: string;
 
   @Prop({
+    type: String,
     required: true,
     nullable: false,
   })
@@ -29,11 +32,10 @@ export class Blog {
   @Prop({
     type: Types.ObjectId,
     ref: User.name,
+    required: true,
+    nullable: false,
   })
   user: ObjectId;
-
-  @Prop({ required: true })
-  name: string;
 }
 
 export const BlogSchema = SchemaFactory.createForClass(Blog);

@@ -1,7 +1,15 @@
-import { IsEmail, IsNotEmpty, IsString, MinLength } from 'class-validator';
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsNumber,
+  IsString,
+  Max,
+  Min,
+  MinLength,
+} from 'class-validator';
 import { i18nValidationMessage } from 'nestjs-i18n';
 
-export class SignupDto {
+export class SetForgottenPasswordDto {
   @IsEmail({}, { message: i18nValidationMessage('dto.IS_EMAIL') })
   @IsNotEmpty({ message: i18nValidationMessage('dto.IS_NOT_EMPTY') })
   email: string;
@@ -11,20 +19,9 @@ export class SignupDto {
   @MinLength(6, { message: i18nValidationMessage('dto.MIN_LENGTH') })
   password: string;
 
-  @IsString({ message: i18nValidationMessage('dto.IS_STRING') })
+  @IsNumber({}, { message: i18nValidationMessage('dto.IS_NUMBER') })
   @IsNotEmpty({ message: i18nValidationMessage('dto.IS_NOT_EMPTY') })
-  firstName: string;
-
-  @IsString({ message: i18nValidationMessage('dto.IS_STRING') })
-  @IsNotEmpty({ message: i18nValidationMessage('dto.IS_NOT_EMPTY') })
-  lastName: string;
-}
-
-export class SaveUser {
-  email: string;
-  password: string;
-  firstName: string;
-  lastName: string;
-  activationCode: number;
+  @Min(100000, { message: i18nValidationMessage('dto.MIN') })
+  @Max(999999, { message: i18nValidationMessage('dto.MAX') })
   passwordRecoveryCode: number;
 }
