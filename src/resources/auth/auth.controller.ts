@@ -8,12 +8,14 @@ import {
   InternalServerErrorException,
   NotFoundException,
   BadRequestException,
+  Get,
 } from '@nestjs/common';
 import { I18n } from 'nestjs-i18n/dist/decorators/i18n.decorator';
 import { I18nContext } from 'nestjs-i18n/dist/i18n.context';
 import { ResponseDto } from 'src/common/dtos/response.dto';
 import { ThrowError } from 'src/common/enums/throw-error.enum';
 import { JwtPayload } from 'src/common/interfaces/jwt-payload.interface';
+import { sendEmail } from 'src/common/services/mailer.service';
 import { IUser } from 'src/model/interfaces/user.interface';
 import { UserService } from '../users/users.service';
 import { AuthService } from './auth.service';
@@ -34,6 +36,15 @@ export class AuthController {
   // signup email (activation code)
   // send-activation-code endpoint email
   // send-password-recovery-code endpoint email
+
+  @Get('test')
+  async test() {
+    const object = {
+      emailTo: 'smguastavino@gmail.com',
+      code: 123456,
+    };
+    return sendEmail(object);
+  }
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
