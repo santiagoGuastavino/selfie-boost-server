@@ -4,11 +4,13 @@ import { createTransport } from 'nodemailer';
 import { EmailDto } from '../dtos/email.dto';
 
 export async function sendEmail(payload: EmailDto): Promise<void> {
-  const html = fs.readFileSync('./public/templates/email.html', 'utf-8');
+  const html = fs.readFileSync(
+    `./public/templates/${payload.caller}.template.html`,
+    'utf-8',
+  );
   const template = handlebars.compile(html);
 
   const smtpTransport = await createTransport({
-    port: Number(process.env.MAIL_PORT),
     host: process.env.MAIL_HOST,
     from: process.env.MAIL_FROM,
     auth: {
@@ -20,7 +22,7 @@ export async function sendEmail(payload: EmailDto): Promise<void> {
   const mailOptions = {
     from: `Blogs <${process.env.MAIL_FROM}>`,
     to: payload.emailTo,
-    subject: 'henlo',
+    subject: payload.subject,
     html: template(payload),
   };
 

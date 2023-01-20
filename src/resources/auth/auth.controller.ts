@@ -8,10 +8,10 @@ import {
   InternalServerErrorException,
   NotFoundException,
   BadRequestException,
-  Get,
 } from '@nestjs/common';
 import { I18n } from 'nestjs-i18n/dist/decorators/i18n.decorator';
 import { I18nContext } from 'nestjs-i18n/dist/i18n.context';
+import { EmailDto } from 'src/common/dtos/email.dto';
 import { ResponseDto } from 'src/common/dtos/response.dto';
 import { ThrowError } from 'src/common/enums/throw-error.enum';
 import { JwtPayload } from 'src/common/interfaces/jwt-payload.interface';
@@ -33,18 +33,8 @@ export class AuthController {
   ) {}
 
   // TO DO
-  // signup email (activation code)
   // send-activation-code endpoint email
   // send-password-recovery-code endpoint email
-
-  @Get('test')
-  async test() {
-    const object = {
-      emailTo: 'smguastavino@gmail.com',
-      code: 123456,
-    };
-    return sendEmail(object);
-  }
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
@@ -176,9 +166,18 @@ export class AuthController {
         passwordRecoveryCode: Math.floor(100000 + Math.random() * 900000),
       };
 
-      await this.userService.create(newUser);
+      const savedUser = await this.userService.create(newUser);
 
-      // send activation code e-mail
+      const emailPayload: EmailDto = {
+        caller: 'auth.signup',
+        emailTo: savedUser.email,
+        userFirstName: savedUser.firstName,
+        userLastName: savedUser.lastName,
+        subject: 'Account created',
+        code: savedUser.activationCode,
+      };
+
+      await sendEmail(emailPayload);
 
       response.payload.message = 'User created.';
 
@@ -425,7 +424,25 @@ export class AuthController {
 
       if (!userRequiringCode) throw new Error(ThrowError.USER_NOT_FOUND);
 
-      // send email with code
+      const newCode = Math.floor(100000 + Math.random() * 900000);
+
+      await this.userService.update(
+        { _id: userRequiringCode._id },
+        {
+          activationCode: newCode,
+        },
+      );
+
+      const emailPayload: EmailDto = {
+        caller: 'auth.send-activation-code',
+        emailTo: userRequiringCode.email,
+        userFirstName: userRequiringCode.firstName,
+        userLastName: userRequiringCode.lastName,
+        subject: 'Activation code',
+        code: newCode,
+      };
+
+      await sendEmail(emailPayload);
 
       response.payload.message = 'Email sent';
 
@@ -470,8 +487,28 @@ export class AuthController {
       });
 
       if (!userRequiringCode) throw new Error(ThrowError.USER_NOT_FOUND);
+      if (userRequiringCode.activated === false)
+        throw new Error(ThrowError.NOT_ACTIVATED);
 
-      // send email with code
+      const newCode = Math.floor(100000 + Math.random() * 900000);
+
+      await this.userService.update(
+        { _id: userRequiringCode._id },
+        {
+          passwordRecoveryCode: newCode,
+        },
+      );
+
+      const emailPayload: EmailDto = {
+        caller: 'auth.send-password-recovery-code',
+        emailTo: userRequiringCode.email,
+        userFirstName: userRequiringCode.firstName,
+        userLastName: userRequiringCode.lastName,
+        subject: 'Password reset code',
+        code: newCode,
+      };
+
+      await sendEmail(emailPayload);
 
       response.payload.message = 'Email sent';
 
@@ -491,6 +528,20 @@ export class AuthController {
                     property: 'email',
                   },
                 }),
+              },
+            },
+          ],
+        });
+      } else if (error.message === ThrowError.NOT_ACTIVATED) {
+        throw new BadRequestException({
+          statusCode: HttpStatus.BAD_REQUEST,
+          message: 'Bad Request',
+          errors: [
+            {
+              property: 'email',
+              children: [],
+              constraints: {
+                NOT_ACTIVATED: i18n.t('exceptions.NOT_ACTIVATED'),
               },
             },
           ],

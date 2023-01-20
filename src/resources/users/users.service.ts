@@ -15,8 +15,8 @@ export class UserService {
     return await this.userModel.findOne(filter).lean();
   }
 
-  async create(payload: SaveUser): Promise<void> {
-    await this.userModel.create(payload);
+  async create(payload: SaveUser): Promise<IUser> {
+    return await this.userModel.create(payload);
   }
 
   async update(
