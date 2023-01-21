@@ -1,109 +1,76 @@
-import {
-  Injectable,
-  HttpStatus,
-  NotFoundException,
-  ForbiddenException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { FilterQuery, Model, PipelineStage, UpdateQuery } from 'mongoose';
+import { IBlog } from 'src/model/interfaces/blog.interface';
 import { Blog } from 'src/model/schemas/blog.schema';
-import { CreateBlogDto } from './dtos/create-blog.dto';
-import { DeleteBlogDto } from './dtos/delete-blog.dto';
-import { ReadOneBlogDto } from './dtos/read-one-blog.dto';
-import { UpdateBlogDto } from './dtos/update-blog.dto';
+import { BlogsUserPopulated } from './dtos/read.dto';
 
 @Injectable()
 export class BlogsService {
-  constructor(
-    @InjectModel(Blog.name) private readonly blogsModel: Model<Blog>,
-  ) {}
+  constructor(@InjectModel(Blog.name) private blogsModel: Model<Blog>) {}
 
-  async createBlog(payload: CreateBlogDto, req: any) {
-    const blogToBeCreated = new this.blogsModel({
-      ...payload,
-      userId: req.user._id,
-      name: req.user.name,
-    });
-
-    await blogToBeCreated.save();
-
-    return {
-      statusCode: HttpStatus.CREATED,
-      message: 'CREATED',
-    };
+  async findOne(filter: FilterQuery<Blog>): Promise<IBlog> {
+    return await this.blogsModel.findOne(filter).select({ user: 0 }).lean();
   }
 
-  async readAllBlogs() {
-    const blogs = await this.blogsModel.find();
-    return {
-      statusCode: HttpStatus.OK,
-      message: 'OK',
-      payload: blogs,
-    };
+  async create(payload: any): Promise<void> {
+    await this.blogsModel.create(payload);
   }
 
-  async readOneBlog(param: ReadOneBlogDto) {
-    const blog = await this.blogsModel.findById(param._id);
-
-    return {
-      statusCode: HttpStatus.OK,
-      message: 'OK',
-      payload: blog,
-    };
+  async update(
+    filter: FilterQuery<Blog>,
+    update: UpdateQuery<Blog>,
+  ): Promise<void> {
+    await this.blogsModel.findOneAndUpdate(filter, update);
   }
 
-  async updateBlog(payload: UpdateBlogDto, req: any) {
-    const blogToUpdate = await this.blogsModel.findByIdAndUpdate(payload._id, {
-      title: payload.title,
-      description: payload.description,
-      imageUrl: payload.imageUrl,
-    });
-
-    if (!blogToUpdate) {
-      throw new NotFoundException({
-        statusCode: HttpStatus.NOT_FOUND,
-        error: 'Not found',
-      });
-    }
-
-    if (blogToUpdate.user !== req.user._id) {
-      throw new ForbiddenException({
-        statusCode: HttpStatus.FORBIDDEN,
-        error: 'Forbidden',
-      });
-    }
-
-    return {
-      statusCode: HttpStatus.OK,
-      message: 'OK',
-    };
+  async delete(filter: FilterQuery<Blog>): Promise<void> {
+    await this.blogsModel.deleteOne(filter);
   }
 
-  async deleteBlog(payload: DeleteBlogDto, req: any) {
-    const blogToDelete = await this.blogsModel.findByIdAndDelete(payload._id);
+  async findAll(): Promise<BlogsUserPopulated[]> {
+    const pipeline: PipelineStage[] = [];
 
-    if (!blogToDelete) {
-      throw new NotFoundException({
-        statusCode: HttpStatus.NOT_FOUND,
-        error: 'Not found',
-      });
-    }
+    pipeline.push(
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'user',
+          foreignField: '_id',
+          as: 'user',
+          pipeline: [
+            {
+              $project: {
+                _id: 1,
+                firstName: 1,
+                lastName: 1,
+              },
+            },
+          ],
+        },
+      },
+      {
+        $unwind: {
+          path: '$user',
+          includeArrayIndex: '0',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $project: {
+          _id: 1,
+          title: 1,
+          description: 1,
+          imageUrl: 1,
+          user: 1,
+        },
+      },
+    );
 
-    if (blogToDelete.user !== req.user._id) {
-      throw new ForbiddenException({
-        statusCode: HttpStatus.FORBIDDEN,
-        error: 'Forbidden',
-      });
-    }
-
-    return {
-      statusCode: HttpStatus.OK,
-      message: 'OK',
-    };
+    return await this.blogsModel.aggregate(pipeline);
   }
 
-  async readUserBlogs(req) {
-    const userBlogs = await this.blogsModel.find({ userId: req.user._id });
-    return userBlogs;
+  async findByField(filter: FilterQuery<Blog>): Promise<IBlog[]> {
+    return await this.blogsModel.find(filter).select({ user: 0 }).lean();
   }
 }

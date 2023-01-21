@@ -5,7 +5,7 @@ export interface IBlog {
   _id: ObjectId;
   title: string;
   description: string | null;
-  imageUrl: string;
+  image: string;
   user: ObjectId;
 }
 

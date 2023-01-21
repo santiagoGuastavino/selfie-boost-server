@@ -27,7 +27,7 @@ export class Blog {
     required: true,
     nullable: false,
   })
-  imageUrl: string;
+  image: string;
 
   @Prop({
     type: Types.ObjectId,

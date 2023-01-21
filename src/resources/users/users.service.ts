@@ -6,23 +6,21 @@ import { User } from 'src/model/schemas/user.schema';
 import { SaveUser } from '../auth/dtos/signup.dto';
 
 @Injectable()
-export class UserService {
-  constructor(
-    @InjectModel(User.name) private readonly userModel: Model<User>,
-  ) {}
+export class UsersService {
+  constructor(@InjectModel(User.name) private usersModel: Model<User>) {}
 
   async findOne(filter: FilterQuery<User>): Promise<IUser> {
-    return await this.userModel.findOne(filter).lean();
+    return await this.usersModel.findOne(filter).lean();
   }
 
   async create(payload: SaveUser): Promise<IUser> {
-    return await this.userModel.create(payload);
+    return await this.usersModel.create(payload);
   }
 
   async update(
     filter: FilterQuery<User>,
     update: UpdateQuery<User>,
   ): Promise<void> {
-    await this.userModel.findOneAndUpdate(filter, update);
+    await this.usersModel.findOneAndUpdate(filter, update);
   }
 }

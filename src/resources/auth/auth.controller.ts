@@ -8,16 +8,19 @@ import {
   InternalServerErrorException,
   NotFoundException,
   BadRequestException,
+  UseGuards,
+  Req,
 } from '@nestjs/common';
 import { I18n } from 'nestjs-i18n/dist/decorators/i18n.decorator';
 import { I18nContext } from 'nestjs-i18n/dist/i18n.context';
 import { EmailDto } from 'src/common/dtos/email.dto';
 import { ResponseDto } from 'src/common/dtos/response.dto';
 import { ThrowError } from 'src/common/enums/throw-error.enum';
+import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import { JwtPayload } from 'src/common/interfaces/jwt-payload.interface';
 import { sendEmail } from 'src/common/services/mailer.service';
 import { IUser } from 'src/model/interfaces/user.interface';
-import { UserService } from '../users/users.service';
+import { UsersService } from '../users/users.service';
 import { AuthService } from './auth.service';
 import { ActivateAccountDto } from './dtos/activate-account.dto';
 import { LoginDto } from './dtos/login.dto';
@@ -28,13 +31,9 @@ import { SignupDto, SaveUser } from './dtos/signup.dto';
 @Controller('auth')
 export class AuthController {
   constructor(
-    private readonly authService: AuthService,
-    private readonly userService: UserService,
+    private authService: AuthService,
+    private usersService: UsersService,
   ) {}
-
-  // TO DO
-  // send-activation-code endpoint email
-  // send-password-recovery-code endpoint email
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
@@ -45,11 +44,11 @@ export class AuthController {
     const response = new ResponseDto(HttpStatus.OK, 'Ok');
 
     try {
-      const userToLogin: IUser = await this.userService.findOne({
+      const userToLogin: IUser = await this.usersService.findOne({
         email: payload.email,
       });
 
-      if (!userToLogin) throw new Error(ThrowError.USER_NOT_FOUND);
+      if (!userToLogin) throw new Error(ThrowError.NOT_FOUND);
       if (userToLogin.activated !== true)
         throw new Error(ThrowError.NOT_ACTIVATED);
 
@@ -73,7 +72,7 @@ export class AuthController {
         timestamp,
       );
 
-      await this.userService.update(
+      await this.usersService.update(
         { _id: userToLogin._id },
         { lastRefreshToken: timestamp },
       );
@@ -85,7 +84,7 @@ export class AuthController {
 
       return response;
     } catch (error) {
-      if (error.message === ThrowError.USER_NOT_FOUND) {
+      if (error.message === ThrowError.NOT_FOUND) {
         throw new NotFoundException({
           statusCode: HttpStatus.NOT_FOUND,
           message: 'Not Found',
@@ -147,7 +146,7 @@ export class AuthController {
     const response = new ResponseDto(HttpStatus.CREATED, 'Created');
 
     try {
-      const userExists: IUser = await this.userService.findOne({
+      const userExists: IUser = await this.usersService.findOne({
         email: payload.email,
       });
 
@@ -166,7 +165,7 @@ export class AuthController {
         passwordRecoveryCode: Math.floor(100000 + Math.random() * 900000),
       };
 
-      const savedUser = await this.userService.create(newUser);
+      const savedUser = await this.usersService.create(newUser);
 
       const emailPayload: EmailDto = {
         caller: 'auth.signup',
@@ -178,8 +177,6 @@ export class AuthController {
       };
 
       await sendEmail(emailPayload);
-
-      response.payload.message = 'User created.';
 
       return response;
     } catch (error) {
@@ -217,11 +214,11 @@ export class AuthController {
     const response = new ResponseDto(HttpStatus.OK, 'Ok');
 
     try {
-      const userToActivate: IUser = await this.userService.findOne({
+      const userToActivate: IUser = await this.usersService.findOne({
         email: payload.email,
       });
 
-      if (!userToActivate) throw new Error(ThrowError.USER_NOT_FOUND);
+      if (!userToActivate) throw new Error(ThrowError.NOT_FOUND);
       if (userToActivate.activated === true)
         throw new Error(ThrowError.ALREADY_ACTIVATED);
       if (userToActivate.activationCode !== payload.activationCode)
@@ -240,7 +237,7 @@ export class AuthController {
         timestamp,
       );
 
-      await this.userService.update(
+      await this.usersService.update(
         { _id: userToActivate._id },
         {
           activationCode: Math.floor(100000 + Math.random() * 900000),
@@ -256,7 +253,7 @@ export class AuthController {
 
       return response;
     } catch (error) {
-      if (error.message === ThrowError.USER_NOT_FOUND) {
+      if (error.message === ThrowError.NOT_FOUND) {
         throw new NotFoundException({
           statusCode: HttpStatus.NOT_FOUND,
           message: 'Not Found',
@@ -321,11 +318,11 @@ export class AuthController {
     const response = new ResponseDto(HttpStatus.OK, 'Ok');
 
     try {
-      const userToRenewPassword: IUser = await this.userService.findOne({
+      const userToRenewPassword: IUser = await this.usersService.findOne({
         email: payload.email,
       });
 
-      if (!userToRenewPassword) throw new Error(ThrowError.USER_NOT_FOUND);
+      if (!userToRenewPassword) throw new Error(ThrowError.NOT_FOUND);
       if (
         userToRenewPassword.passwordRecoveryCode !==
         payload.passwordRecoveryCode
@@ -343,7 +340,7 @@ export class AuthController {
         payload.password,
       );
 
-      await this.userService.update(
+      await this.usersService.update(
         { email: userToRenewPassword.email },
         {
           password: hashedPassword,
@@ -353,7 +350,7 @@ export class AuthController {
 
       return response;
     } catch (error) {
-      if (error.message === ThrowError.USER_NOT_FOUND) {
+      if (error.message === ThrowError.NOT_FOUND) {
         throw new NotFoundException({
           statusCode: HttpStatus.NOT_FOUND,
           message: 'Not Found',
@@ -418,15 +415,15 @@ export class AuthController {
     const response = new ResponseDto(HttpStatus.OK, 'Ok');
 
     try {
-      const userRequiringCode: IUser = await this.userService.findOne({
+      const userRequiringCode: IUser = await this.usersService.findOne({
         email: payload.email,
       });
 
-      if (!userRequiringCode) throw new Error(ThrowError.USER_NOT_FOUND);
+      if (!userRequiringCode) throw new Error(ThrowError.NOT_FOUND);
 
       const newCode = Math.floor(100000 + Math.random() * 900000);
 
-      await this.userService.update(
+      await this.usersService.update(
         { _id: userRequiringCode._id },
         {
           activationCode: newCode,
@@ -444,11 +441,9 @@ export class AuthController {
 
       await sendEmail(emailPayload);
 
-      response.payload.message = 'Email sent';
-
       return response;
     } catch (error) {
-      if (error.message === ThrowError.USER_NOT_FOUND) {
+      if (error.message === ThrowError.NOT_FOUND) {
         throw new NotFoundException({
           statusCode: HttpStatus.NOT_FOUND,
           message: 'Not Found',
@@ -482,17 +477,17 @@ export class AuthController {
     const response = new ResponseDto(HttpStatus.OK, 'Ok');
 
     try {
-      const userRequiringCode: IUser = await this.userService.findOne({
+      const userRequiringCode: IUser = await this.usersService.findOne({
         email: payload.email,
       });
 
-      if (!userRequiringCode) throw new Error(ThrowError.USER_NOT_FOUND);
+      if (!userRequiringCode) throw new Error(ThrowError.NOT_FOUND);
       if (userRequiringCode.activated === false)
         throw new Error(ThrowError.NOT_ACTIVATED);
 
       const newCode = Math.floor(100000 + Math.random() * 900000);
 
-      await this.userService.update(
+      await this.usersService.update(
         { _id: userRequiringCode._id },
         {
           passwordRecoveryCode: newCode,
@@ -510,11 +505,9 @@ export class AuthController {
 
       await sendEmail(emailPayload);
 
-      response.payload.message = 'Email sent';
-
       return response;
     } catch (error) {
-      if (error.message === ThrowError.USER_NOT_FOUND) {
+      if (error.message === ThrowError.NOT_FOUND) {
         throw new NotFoundException({
           statusCode: HttpStatus.NOT_FOUND,
           message: 'Not Found',
@@ -542,6 +535,64 @@ export class AuthController {
               children: [],
               constraints: {
                 NOT_ACTIVATED: i18n.t('exceptions.NOT_ACTIVATED'),
+              },
+            },
+          ],
+        });
+      } else {
+        Logger.error(error);
+        throw new InternalServerErrorException();
+      }
+    }
+  }
+
+  @Post('change-password')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  async changePassword(
+    @Body() payload: any,
+    @Req() req: any,
+    @I18n() i18n: I18nContext,
+  ): Promise<ResponseDto> {
+    const response = new ResponseDto(HttpStatus.OK, 'Ok');
+    const user: JwtPayload = req.user;
+
+    try {
+      const userToChangePassword = await this.usersService.findOne({
+        _id: user._id,
+      });
+
+      const passwordsMatch: boolean = await this.authService.matchPasswords(
+        payload.password,
+        userToChangePassword.password,
+      );
+
+      if (passwordsMatch) throw new Error(ThrowError.SAME_PASSWORD);
+
+      const hashedPassword: string = await this.authService.hashPassword(
+        payload.password,
+      );
+
+      await this.usersService.update(
+        { _id: user._id },
+        {
+          password: hashedPassword,
+          passwordRecoveryCode: Math.floor(100000 + Math.random() * 900000),
+        },
+      );
+
+      return response;
+    } catch (error) {
+      if (error.message === ThrowError.SAME_PASSWORD) {
+        throw new BadRequestException({
+          statusCode: HttpStatus.BAD_REQUEST,
+          message: 'Bad Request',
+          errors: [
+            {
+              property: 'password',
+              children: [],
+              constraints: {
+                SAME_PASSWORD: i18n.t('exceptions.SAME_PASSWORD'),
               },
             },
           ],
