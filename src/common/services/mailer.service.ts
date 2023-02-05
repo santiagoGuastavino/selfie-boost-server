@@ -20,7 +20,7 @@ export async function sendEmail(payload: EmailDto): Promise<void> {
   });
 
   const mailOptions = {
-    from: `Blogs <${process.env.MAIL_FROM}>`,
+    from: `Prop Flick <${process.env.MAIL_FROM}>`,
     to: payload.emailTo,
     subject: payload.subject,
     html: template(payload),

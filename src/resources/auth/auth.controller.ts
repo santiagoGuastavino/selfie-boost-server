@@ -420,6 +420,8 @@ export class AuthController {
       });
 
       if (!userRequiringCode) throw new Error(ThrowError.NOT_FOUND);
+      if (userRequiringCode.activated)
+        throw new Error(ThrowError.ALREADY_ACTIVATED);
 
       const newCode = Math.floor(100000 + Math.random() * 900000);
 
@@ -457,6 +459,20 @@ export class AuthController {
                     property: 'email',
                   },
                 }),
+              },
+            },
+          ],
+        });
+      } else if (error.message === ThrowError.ALREADY_ACTIVATED) {
+        throw new BadRequestException({
+          statusCode: HttpStatus.BAD_REQUEST,
+          message: 'Bad Request',
+          errors: [
+            {
+              property: 'email',
+              children: [],
+              constraints: {
+                ALREADY_ACTIVATED: i18n.t('exceptions.ALREADY_ACTIVATED'),
               },
             },
           ],

@@ -63,7 +63,6 @@ export class BlogsController {
 
       return response;
     } catch (error) {
-      console.log(error);
       Logger.error(error);
       throw new InternalServerErrorException();
     }
@@ -234,9 +233,9 @@ export class BlogsController {
 
       if (!blogToBeDeleted) throw new Error(ThrowError.NOT_FOUND);
 
-      const userToDelete = await this.usersService.findOne({ _id: user._id });
+      const userDeleting = await this.usersService.findOne({ _id: user._id });
 
-      if (blogToBeDeleted.user !== userToDelete._id)
+      if (blogToBeDeleted.user !== userDeleting._id)
         throw new Error(ThrowError.FORBIDDEN);
 
       await this.blogsService.delete({ _id: blogToBeDeleted._id });

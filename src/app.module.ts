@@ -16,7 +16,9 @@ import * as path from 'path';
     ConfigModule.forRoot({
       isGlobal: true,
     }),
-    MongooseModule.forRoot(process.env.DB),
+    MongooseModule.forRoot(
+      process.env.NODE_ENV === 'test' ? process.env.DB_TEST : process.env.DB,
+    ),
     I18nModule.forRoot({
       fallbackLanguage: 'en',
       loaderOptions: {
