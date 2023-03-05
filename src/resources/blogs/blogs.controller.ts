@@ -23,18 +23,19 @@ import { BlogsUserPopulated, ReadOneByIdDto } from './dtos/read.dto';
 import { UpdateBlogDto } from './dtos/update-blog.dto';
 import { ObjectId } from 'mongodb';
 import { IBlog } from 'src/model/interfaces/blog.interface';
-import { ThrowError } from 'src/common/enums/throw-error.enum';
+import { Exceptions } from 'src/common/enums/exceptions.enum';
 import { I18n, I18nContext } from 'nestjs-i18n';
 import { TransformToBufferPipe } from 'src/common/pipes/transform-to-buffer.pipe';
 import { UsersService } from '../users/users.service';
 import { ForbiddenException } from '@nestjs/common/exceptions';
-import { uploadS3Image } from 'src/common/services/bucket.service';
+import { AWSService } from 'src/common/services/aws/aws.service';
 
 @Controller('blogs')
 export class BlogsController {
   constructor(
     private blogsService: BlogsService,
     private usersService: UsersService,
+    private awsService: AWSService,
   ) {}
 
   @Post()
@@ -48,7 +49,7 @@ export class BlogsController {
     const user: JwtPayload = req.user;
 
     try {
-      const imageUrl: string = await uploadS3Image(
+      const imageUrl: string = await this.awsService.uploadS3Image(
         payload.buffer,
         `blog-image-${user._id}-${payload.title}`,
       );
@@ -118,13 +119,13 @@ export class BlogsController {
     try {
       const blog: IBlog = await this.blogsService.findOne(param);
 
-      if (!blog) throw new Error(ThrowError.NOT_FOUND);
+      if (!blog) throw new Error(Exceptions.NOT_FOUND);
 
       response.payload = blog;
 
       return response;
     } catch (error) {
-      if (error.message === ThrowError.NOT_FOUND) {
+      if (error.message === Exceptions.NOT_FOUND) {
         throw new NotFoundException({
           statusCode: HttpStatus.NOT_FOUND,
           message: 'Not Found',
@@ -165,18 +166,18 @@ export class BlogsController {
         _id: payload._id,
       });
 
-      if (!blogToBeUpdated) throw new Error(ThrowError.NOT_FOUND);
+      if (!blogToBeUpdated) throw new Error(Exceptions.NOT_FOUND);
 
       const userToUpdate = await this.usersService.findOne({ _id: user._id });
 
       if (blogToBeUpdated.user !== userToUpdate._id)
-        throw new Error(ThrowError.FORBIDDEN);
+        throw new Error(Exceptions.FORBIDDEN);
 
       await this.blogsService.update({ _id: blogToBeUpdated._id }, payload);
 
       return response;
     } catch (error) {
-      if (error.message === ThrowError.NOT_FOUND) {
+      if (error.message === Exceptions.NOT_FOUND) {
         throw new NotFoundException({
           statusCode: HttpStatus.NOT_FOUND,
           message: 'Not Found',
@@ -194,7 +195,7 @@ export class BlogsController {
             },
           ],
         });
-      } else if (error.message === ThrowError.FORBIDDEN) {
+      } else if (error.message === Exceptions.FORBIDDEN) {
         throw new ForbiddenException({
           statusCode: HttpStatus.FORBIDDEN,
           message: 'Forbidden',
@@ -231,18 +232,18 @@ export class BlogsController {
         _id: payload._id,
       });
 
-      if (!blogToBeDeleted) throw new Error(ThrowError.NOT_FOUND);
+      if (!blogToBeDeleted) throw new Error(Exceptions.NOT_FOUND);
 
       const userDeleting = await this.usersService.findOne({ _id: user._id });
 
       if (blogToBeDeleted.user !== userDeleting._id)
-        throw new Error(ThrowError.FORBIDDEN);
+        throw new Error(Exceptions.FORBIDDEN);
 
       await this.blogsService.delete({ _id: blogToBeDeleted._id });
 
       return response;
     } catch (error) {
-      if (error.message === ThrowError.NOT_FOUND) {
+      if (error.message === Exceptions.NOT_FOUND) {
         throw new NotFoundException({
           statusCode: HttpStatus.NOT_FOUND,
           message: 'Not Found',
@@ -260,7 +261,7 @@ export class BlogsController {
             },
           ],
         });
-      } else if (error.message === ThrowError.FORBIDDEN) {
+      } else if (error.message === Exceptions.FORBIDDEN) {
         throw new ForbiddenException({
           statusCode: HttpStatus.FORBIDDEN,
           message: 'Forbidden',

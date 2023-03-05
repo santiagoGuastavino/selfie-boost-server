@@ -19,12 +19,3 @@ export class SignupDto {
   @IsNotEmpty({ message: i18nValidationMessage('dto.IS_NOT_EMPTY') })
   lastName: string;
 }
-
-export class SaveUser {
-  email: string;
-  password: string;
-  firstName: string;
-  lastName: string;
-  activationCode: number;
-  passwordRecoveryCode: number;
-}

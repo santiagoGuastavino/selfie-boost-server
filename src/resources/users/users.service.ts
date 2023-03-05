@@ -3,7 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { FilterQuery, Model, UpdateQuery } from 'mongoose';
 import { IUser } from 'src/model/interfaces/user.interface';
 import { User } from 'src/model/schemas/user.schema';
-import { SaveUser } from '../auth/dtos/signup.dto';
+import { SaveUser } from './dtos/save-user.dto';
 
 @Injectable()
 export class UsersService {
@@ -17,7 +17,7 @@ export class UsersService {
     return await this.usersModel.create(payload);
   }
 
-  async update(
+  async updateOne(
     filter: FilterQuery<User>,
     update: UpdateQuery<User>,
   ): Promise<void> {

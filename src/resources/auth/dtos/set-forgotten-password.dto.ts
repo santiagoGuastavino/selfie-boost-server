@@ -1,10 +1,9 @@
 import {
   IsEmail,
   IsNotEmpty,
-  IsNumber,
+  IsNumberString,
   IsString,
-  Max,
-  Min,
+  Length,
   MinLength,
 } from 'class-validator';
 import { i18nValidationMessage } from 'nestjs-i18n';
@@ -19,9 +18,8 @@ export class SetForgottenPasswordDto {
   @MinLength(6, { message: i18nValidationMessage('dto.MIN_LENGTH') })
   password: string;
 
-  @IsNumber({}, { message: i18nValidationMessage('dto.IS_NUMBER') })
+  @IsNumberString({}, { message: i18nValidationMessage('dto.IS_NUMBER') })
   @IsNotEmpty({ message: i18nValidationMessage('dto.IS_NOT_EMPTY') })
-  @Min(100000, { message: i18nValidationMessage('dto.MIN') })
-  @Max(999999, { message: i18nValidationMessage('dto.MAX') })
+  @Length(6, 6, { message: i18nValidationMessage('dto.LENGTH') })
   passwordRecoveryCode: number;
 }

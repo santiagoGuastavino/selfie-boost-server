@@ -34,4 +34,9 @@ export class AuthService {
   async hashPassword(password: string): Promise<string> {
     return await bcrypt.hash(password, 10);
   }
+
+  async decodeJwtPayload(refreshToken: string): Promise<JwtPayload> {
+    const decoded = this.jwtService.decode(refreshToken) as JwtPayload;
+    return decoded;
+  }
 }

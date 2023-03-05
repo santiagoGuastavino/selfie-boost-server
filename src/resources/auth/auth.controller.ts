@@ -10,23 +10,27 @@ import {
   BadRequestException,
   UseGuards,
   Req,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { I18n } from 'nestjs-i18n/dist/decorators/i18n.decorator';
 import { I18nContext } from 'nestjs-i18n/dist/i18n.context';
-import { EmailDto } from 'src/common/dtos/email.dto';
+import { ObjectId } from 'mongodb';
 import { ResponseDto } from 'src/common/dtos/response.dto';
-import { ThrowError } from 'src/common/enums/throw-error.enum';
-import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
-import { JwtPayload } from 'src/common/interfaces/jwt-payload.interface';
-import { sendEmail } from 'src/common/services/mailer.service';
-import { IUser } from 'src/model/interfaces/user.interface';
-import { UsersService } from '../users/users.service';
-import { AuthService } from './auth.service';
 import { ActivateAccountDto } from './dtos/activate-account.dto';
 import { LoginDto } from './dtos/login.dto';
 import { SendCodeDto } from './dtos/send-code.dto';
 import { SetForgottenPasswordDto } from './dtos/set-forgotten-password.dto';
-import { SignupDto, SaveUser } from './dtos/signup.dto';
+import { SignupDto } from './dtos/signup.dto';
+import { SaveUser } from '../users/dtos/save-user.dto';
+import { Exceptions } from 'src/common/enums/exceptions.enum';
+import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
+import { JwtPayload } from 'src/common/interfaces/jwt-payload.interface';
+import { IUser } from 'src/model/interfaces/user.interface';
+import { UsersService } from '../users/users.service';
+import { AuthService } from './auth.service';
+import { RefreshAccessTokenDto } from './dtos/refresh-access-token.dto';
+import { ChangePasswordDto } from './dtos/change-password.dto';
+import { MailerService } from 'src/common/services/mailer/mailer.service';
 
 @Controller('auth')
 export class AuthController {
@@ -48,16 +52,16 @@ export class AuthController {
         email: payload.email,
       });
 
-      if (!userToLogin) throw new Error(ThrowError.NOT_FOUND);
+      if (!userToLogin) throw new Error(Exceptions.NOT_FOUND);
       if (userToLogin.activated !== true)
-        throw new Error(ThrowError.NOT_ACTIVATED);
+        throw new Error(Exceptions.NOT_ACTIVATED);
 
       const passwordsMatch = await this.authService.matchPasswords(
         payload.password,
         userToLogin.password,
       );
 
-      if (!passwordsMatch) throw new Error(ThrowError.WRONG_CREDENTIALS);
+      if (!passwordsMatch) throw new Error(Exceptions.WRONG_CREDENTIALS);
 
       const jwtPayload: JwtPayload = {
         _id: userToLogin._id,
@@ -72,7 +76,7 @@ export class AuthController {
         timestamp,
       );
 
-      await this.usersService.update(
+      await this.usersService.updateOne(
         { _id: userToLogin._id },
         { lastRefreshToken: timestamp },
       );
@@ -84,7 +88,7 @@ export class AuthController {
 
       return response;
     } catch (error) {
-      if (error.message === ThrowError.NOT_FOUND) {
+      if (error.message === Exceptions.NOT_FOUND) {
         throw new NotFoundException({
           statusCode: HttpStatus.NOT_FOUND,
           message: 'Not Found',
@@ -102,7 +106,7 @@ export class AuthController {
             },
           ],
         });
-      } else if (error.message === ThrowError.NOT_ACTIVATED) {
+      } else if (error.message === Exceptions.NOT_ACTIVATED) {
         throw new BadRequestException({
           statusCode: HttpStatus.BAD_REQUEST,
           message: 'Bad Request',
@@ -116,7 +120,7 @@ export class AuthController {
             },
           ],
         });
-      } else if (error.message === ThrowError.WRONG_CREDENTIALS) {
+      } else if (error.message === Exceptions.WRONG_CREDENTIALS) {
         throw new BadRequestException({
           statusCode: HttpStatus.BAD_REQUEST,
           message: 'Bad Request',
@@ -150,7 +154,7 @@ export class AuthController {
         email: payload.email,
       });
 
-      if (userExists) throw new Error(ThrowError.ALREADY_EXISTS);
+      if (userExists) throw new Error(Exceptions.ALREADY_EXISTS);
 
       const hashedPassword: string = await this.authService.hashPassword(
         payload.password,
@@ -167,20 +171,17 @@ export class AuthController {
 
       const savedUser = await this.usersService.create(newUser);
 
-      const emailPayload: EmailDto = {
-        caller: 'auth.signup',
-        emailTo: savedUser.email,
-        userFirstName: savedUser.firstName,
-        userLastName: savedUser.lastName,
-        subject: 'Account created',
-        code: savedUser.activationCode,
-      };
-
-      await sendEmail(emailPayload);
+      const mailer = new MailerService();
+      mailer.caller = 'auth.signup';
+      mailer.recipientEmail = savedUser.email;
+      mailer.recipientFirstName = savedUser.firstName;
+      mailer.recipientLastName = savedUser.lastName;
+      mailer.code = savedUser.activationCode;
+      await mailer.sendEmail();
 
       return response;
     } catch (error) {
-      if (error.message === ThrowError.ALREADY_EXISTS) {
+      if (error.message === Exceptions.ALREADY_EXISTS) {
         throw new BadRequestException({
           statusCode: HttpStatus.BAD_REQUEST,
           message: 'Bad Request',
@@ -205,6 +206,85 @@ export class AuthController {
     }
   }
 
+  @Post('refresh')
+  @HttpCode(HttpStatus.OK)
+  async refresh(
+    @Body() payload: RefreshAccessTokenDto,
+    @I18n() i18n: I18nContext,
+  ): Promise<ResponseDto> {
+    const response = new ResponseDto(HttpStatus.OK, 'Ok');
+
+    try {
+      const refresh_token: string = payload.refresh_token;
+
+      const decodedJwtPayload: JwtPayload =
+        await this.authService.decodeJwtPayload(refresh_token);
+
+      const userId: ObjectId = decodedJwtPayload._id;
+      const timestamp: number = decodedJwtPayload.timestamp;
+
+      const userToRenewCredentials: IUser = await this.usersService.findOne({
+        _id: userId,
+      });
+
+      if (userToRenewCredentials.lastRefreshToken !== timestamp)
+        throw new Error(Exceptions.TOKEN_EXPIRED);
+
+      const now: number = new Date().getTime();
+      const diffTime: number = Math.abs(timestamp - now);
+      const diffDays: number = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      const expireAfterDays: number = parseInt(
+        process.env.JWT_REFRESH_TOKEN_TIME.match(/\d+/)[0],
+      );
+
+      if (diffDays > expireAfterDays) throw new Error(Exceptions.TOKEN_EXPIRED);
+
+      await this.usersService.updateOne(
+        { _id: userToRenewCredentials._id },
+        { lastRefreshToken: now },
+      );
+
+      const newCredentials: JwtPayload = {
+        _id: userToRenewCredentials._id,
+      };
+
+      const accessToken: string =
+        this.authService.generateAccessToken(newCredentials);
+      const refreshToken: string = this.authService.generateRefreshToken(
+        newCredentials,
+        now,
+      );
+
+      response.payload = {
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      };
+
+      return response;
+    } catch (error) {
+      if (error.message === Exceptions.TOKEN_EXPIRED) {
+        throw new UnauthorizedException({
+          statusCode: HttpStatus.UNAUTHORIZED,
+          message: 'Unauthorized',
+          errors: [
+            {
+              property: 'refresh_token',
+              constraints: {
+                REFRESH_TOKEN_EXPIRED: i18n.t(
+                  'exceptions.REFRESH_TOKEN_EXPIRED',
+                ),
+              },
+            },
+          ],
+        });
+      } else {
+        Logger.error(error);
+        throw new InternalServerErrorException();
+      }
+    }
+  }
+
   @Post('activate-account')
   @HttpCode(HttpStatus.OK)
   async activateAccount(
@@ -218,11 +298,11 @@ export class AuthController {
         email: payload.email,
       });
 
-      if (!userToActivate) throw new Error(ThrowError.NOT_FOUND);
+      if (!userToActivate) throw new Error(Exceptions.NOT_FOUND);
       if (userToActivate.activated === true)
-        throw new Error(ThrowError.ALREADY_ACTIVATED);
-      if (userToActivate.activationCode !== payload.activationCode)
-        throw new Error(ThrowError.NO_MATCH);
+        throw new Error(Exceptions.ALREADY_ACTIVATED);
+      if (userToActivate.activationCode !== Number(payload.activationCode))
+        throw new Error(Exceptions.NO_MATCH);
 
       const jwtPayload: JwtPayload = {
         _id: userToActivate._id,
@@ -237,10 +317,12 @@ export class AuthController {
         timestamp,
       );
 
-      await this.usersService.update(
+      const newCode = Math.floor(100000 + Math.random() * 900000);
+
+      await this.usersService.updateOne(
         { _id: userToActivate._id },
         {
-          activationCode: Math.floor(100000 + Math.random() * 900000),
+          activationCode: newCode,
           activated: true,
           lastRefreshToken: timestamp,
         },
@@ -253,7 +335,7 @@ export class AuthController {
 
       return response;
     } catch (error) {
-      if (error.message === ThrowError.NOT_FOUND) {
+      if (error.message === Exceptions.NOT_FOUND) {
         throw new NotFoundException({
           statusCode: HttpStatus.NOT_FOUND,
           message: 'Not Found',
@@ -271,7 +353,7 @@ export class AuthController {
             },
           ],
         });
-      } else if (error.message === ThrowError.ALREADY_ACTIVATED) {
+      } else if (error.message === Exceptions.ALREADY_ACTIVATED) {
         throw new BadRequestException({
           statusCode: HttpStatus.BAD_REQUEST,
           message: 'Bad Request',
@@ -285,7 +367,7 @@ export class AuthController {
             },
           ],
         });
-      } else if (error.message === ThrowError.NO_MATCH) {
+      } else if (error.message === Exceptions.NO_MATCH) {
         throw new BadRequestException({
           statusCode: HttpStatus.BAD_REQUEST,
           message: 'Bad Request',
@@ -322,35 +404,37 @@ export class AuthController {
         email: payload.email,
       });
 
-      if (!userToRenewPassword) throw new Error(ThrowError.NOT_FOUND);
+      if (!userToRenewPassword) throw new Error(Exceptions.NOT_FOUND);
       if (
         userToRenewPassword.passwordRecoveryCode !==
-        payload.passwordRecoveryCode
+        Number(payload.passwordRecoveryCode)
       )
-        throw new Error(ThrowError.NO_MATCH);
+        throw new Error(Exceptions.NO_MATCH);
 
       const passwordsMatch: boolean = await this.authService.matchPasswords(
         payload.password,
         userToRenewPassword.password,
       );
 
-      if (passwordsMatch) throw new Error(ThrowError.SAME_PASSWORD);
+      if (passwordsMatch) throw new Error(Exceptions.SAME_PASSWORD);
 
       const hashedPassword: string = await this.authService.hashPassword(
         payload.password,
       );
 
-      await this.usersService.update(
+      const newCode = Math.floor(100000 + Math.random() * 900000);
+
+      await this.usersService.updateOne(
         { email: userToRenewPassword.email },
         {
           password: hashedPassword,
-          passwordRecoveryCode: Math.floor(100000 + Math.random() * 900000),
+          passwordRecoveryCode: newCode,
         },
       );
 
       return response;
     } catch (error) {
-      if (error.message === ThrowError.NOT_FOUND) {
+      if (error.message === Exceptions.NOT_FOUND) {
         throw new NotFoundException({
           statusCode: HttpStatus.NOT_FOUND,
           message: 'Not Found',
@@ -368,7 +452,7 @@ export class AuthController {
             },
           ],
         });
-      } else if (error.message === ThrowError.NO_MATCH) {
+      } else if (error.message === Exceptions.NO_MATCH) {
         throw new BadRequestException({
           statusCode: HttpStatus.BAD_REQUEST,
           message: 'Bad Request',
@@ -385,7 +469,7 @@ export class AuthController {
             },
           ],
         });
-      } else if (error.message === ThrowError.SAME_PASSWORD) {
+      } else if (error.message === Exceptions.SAME_PASSWORD) {
         throw new BadRequestException({
           statusCode: HttpStatus.BAD_REQUEST,
           message: 'Bad Request',
@@ -419,33 +503,30 @@ export class AuthController {
         email: payload.email,
       });
 
-      if (!userRequiringCode) throw new Error(ThrowError.NOT_FOUND);
+      if (!userRequiringCode) throw new Error(Exceptions.NOT_FOUND);
       if (userRequiringCode.activated)
-        throw new Error(ThrowError.ALREADY_ACTIVATED);
+        throw new Error(Exceptions.ALREADY_ACTIVATED);
 
       const newCode = Math.floor(100000 + Math.random() * 900000);
 
-      await this.usersService.update(
+      await this.usersService.updateOne(
         { _id: userRequiringCode._id },
         {
           activationCode: newCode,
         },
       );
 
-      const emailPayload: EmailDto = {
-        caller: 'auth.send-activation-code',
-        emailTo: userRequiringCode.email,
-        userFirstName: userRequiringCode.firstName,
-        userLastName: userRequiringCode.lastName,
-        subject: 'Activation code',
-        code: newCode,
-      };
-
-      await sendEmail(emailPayload);
+      const mailer = new MailerService();
+      mailer.caller = 'auth.send-activation-code';
+      mailer.recipientEmail = userRequiringCode.email;
+      mailer.recipientFirstName = userRequiringCode.firstName;
+      mailer.recipientLastName = userRequiringCode.lastName;
+      mailer.code = newCode;
+      await mailer.sendEmail();
 
       return response;
     } catch (error) {
-      if (error.message === ThrowError.NOT_FOUND) {
+      if (error.message === Exceptions.NOT_FOUND) {
         throw new NotFoundException({
           statusCode: HttpStatus.NOT_FOUND,
           message: 'Not Found',
@@ -463,7 +544,7 @@ export class AuthController {
             },
           ],
         });
-      } else if (error.message === ThrowError.ALREADY_ACTIVATED) {
+      } else if (error.message === Exceptions.ALREADY_ACTIVATED) {
         throw new BadRequestException({
           statusCode: HttpStatus.BAD_REQUEST,
           message: 'Bad Request',
@@ -497,33 +578,30 @@ export class AuthController {
         email: payload.email,
       });
 
-      if (!userRequiringCode) throw new Error(ThrowError.NOT_FOUND);
+      if (!userRequiringCode) throw new Error(Exceptions.NOT_FOUND);
       if (userRequiringCode.activated === false)
-        throw new Error(ThrowError.NOT_ACTIVATED);
+        throw new Error(Exceptions.NOT_ACTIVATED);
 
       const newCode = Math.floor(100000 + Math.random() * 900000);
 
-      await this.usersService.update(
+      await this.usersService.updateOne(
         { _id: userRequiringCode._id },
         {
           passwordRecoveryCode: newCode,
         },
       );
 
-      const emailPayload: EmailDto = {
-        caller: 'auth.send-password-recovery-code',
-        emailTo: userRequiringCode.email,
-        userFirstName: userRequiringCode.firstName,
-        userLastName: userRequiringCode.lastName,
-        subject: 'Password reset code',
-        code: newCode,
-      };
-
-      await sendEmail(emailPayload);
+      const mailer = new MailerService();
+      mailer.caller = 'auth.send-password-recovery-code';
+      mailer.recipientEmail = userRequiringCode.email;
+      mailer.recipientFirstName = userRequiringCode.firstName;
+      mailer.recipientLastName = userRequiringCode.lastName;
+      mailer.code = newCode;
+      await mailer.sendEmail();
 
       return response;
     } catch (error) {
-      if (error.message === ThrowError.NOT_FOUND) {
+      if (error.message === Exceptions.NOT_FOUND) {
         throw new NotFoundException({
           statusCode: HttpStatus.NOT_FOUND,
           message: 'Not Found',
@@ -541,7 +619,7 @@ export class AuthController {
             },
           ],
         });
-      } else if (error.message === ThrowError.NOT_ACTIVATED) {
+      } else if (error.message === Exceptions.NOT_ACTIVATED) {
         throw new BadRequestException({
           statusCode: HttpStatus.BAD_REQUEST,
           message: 'Bad Request',
@@ -566,7 +644,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard)
   async changePassword(
-    @Body() payload: any,
+    @Body() payload: ChangePasswordDto,
     @Req() req: any,
     @I18n() i18n: I18nContext,
   ): Promise<ResponseDto> {
@@ -583,13 +661,13 @@ export class AuthController {
         userToChangePassword.password,
       );
 
-      if (passwordsMatch) throw new Error(ThrowError.SAME_PASSWORD);
+      if (passwordsMatch) throw new Error(Exceptions.SAME_PASSWORD);
 
       const hashedPassword: string = await this.authService.hashPassword(
         payload.password,
       );
 
-      await this.usersService.update(
+      await this.usersService.updateOne(
         { _id: user._id },
         {
           password: hashedPassword,
@@ -599,7 +677,7 @@ export class AuthController {
 
       return response;
     } catch (error) {
-      if (error.message === ThrowError.SAME_PASSWORD) {
+      if (error.message === Exceptions.SAME_PASSWORD) {
         throw new BadRequestException({
           statusCode: HttpStatus.BAD_REQUEST,
           message: 'Bad Request',

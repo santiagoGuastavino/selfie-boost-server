@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsNumber, Max, Min } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsNumberString, Length } from 'class-validator';
 import { i18nValidationMessage } from 'nestjs-i18n';
 
 export class ActivateAccountDto {
@@ -6,9 +6,8 @@ export class ActivateAccountDto {
   @IsNotEmpty({ message: i18nValidationMessage('dto.IS_NOT_EMPTY') })
   email: string;
 
-  @IsNumber({}, { message: i18nValidationMessage('dto.IS_NUMBER') })
+  @IsNumberString({}, { message: i18nValidationMessage('dto.IS_NUMBER') })
   @IsNotEmpty({ message: i18nValidationMessage('dto.IS_NOT_EMPTY') })
-  @Min(100000, { message: i18nValidationMessage('dto.MIN') })
-  @Max(999999, { message: i18nValidationMessage('dto.MAX') })
+  @Length(6, 6, { message: i18nValidationMessage('dto.LENGTH') })
   activationCode: number;
 }
