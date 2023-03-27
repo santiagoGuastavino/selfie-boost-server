@@ -19,7 +19,7 @@ import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import { JwtPayload } from 'src/common/interfaces/jwt-payload.interface';
 import { BlogsService } from './blogs.service';
 import { CreateBlogDto, SaveBlog } from './dtos/create-blog.dto';
-import { BlogsUserPopulated, ReadOneByIdDto } from './dtos/read.dto';
+import { ReadOneByIdDto } from './dtos/read-one.dto';
 import { UpdateBlogDto } from './dtos/update-blog.dto';
 import { ObjectId } from 'mongodb';
 import { IBlog } from 'src/model/interfaces/blog.interface';
@@ -28,7 +28,8 @@ import { I18n, I18nContext } from 'nestjs-i18n';
 import { TransformToBufferPipe } from 'src/common/pipes/transform-to-buffer.pipe';
 import { UsersService } from '../users/users.service';
 import { ForbiddenException } from '@nestjs/common/exceptions';
-import { AWSService } from 'src/common/services/aws/aws.service';
+import { AWSService } from 'src/services/aws/aws.service';
+import { BlogsUserPopulated } from './dtos/blog.dto';
 
 @Controller('blogs')
 export class BlogsController {
@@ -49,7 +50,7 @@ export class BlogsController {
     const user: JwtPayload = req.user;
 
     try {
-      const imageUrl: string = await this.awsService.uploadS3Image(
+      const imageUrl: string = await this.awsService.uploadToS3(
         payload.buffer,
         `blog-image-${user._id}-${payload.title}`,
       );
@@ -94,7 +95,7 @@ export class BlogsController {
     const user: JwtPayload = req.user;
 
     try {
-      const blogsByUser: IBlog[] = await this.blogsService.findByField({
+      const blogsByUser: IBlog[] = await this.blogsService.findMany({
         user: new ObjectId(user._id),
       });
 
@@ -107,7 +108,7 @@ export class BlogsController {
     }
   }
 
-  @Get(':_id')
+  @Get(':id')
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard)
   async readOneById(
@@ -117,7 +118,7 @@ export class BlogsController {
     const response = new ResponseDto(HttpStatus.OK, 'Ok');
 
     try {
-      const blog: IBlog = await this.blogsService.findOne(param);
+      const blog: IBlog = await this.blogsService.findOne({ _id: param.id });
 
       if (!blog) throw new Error(Exceptions.NOT_FOUND);
 
@@ -229,7 +230,7 @@ export class BlogsController {
 
     try {
       const blogToBeDeleted = await this.blogsService.findOne({
-        _id: payload._id,
+        _id: payload.id,
       });
 
       if (!blogToBeDeleted) throw new Error(Exceptions.NOT_FOUND);

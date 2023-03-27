@@ -1,6 +1,6 @@
 {
-  "name": "selfie-boost-server",
-  "version": "0.0.1",
+  "name": "selfieboost-server",
+  "version": "0.0.2",
   "author": "Santiago Guastavino",
   "private": true,
   "license": "UNLICENSED",
@@ -27,6 +27,7 @@
     "bcrypt": "^5.1.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.13.2",
+    "file-type": "^16.5.4",
     "handlebars": "^4.7.7",
     "mongoose": "^6.6.5",
     "nestjs-i18n": "^10.2.6",

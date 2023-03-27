@@ -3,7 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { FilterQuery, Model, PipelineStage, UpdateQuery } from 'mongoose';
 import { IBlog } from 'src/model/interfaces/blog.interface';
 import { Blog } from 'src/model/schemas/blog.schema';
-import { BlogsUserPopulated } from './dtos/read.dto';
+import { BlogsUserPopulated } from './dtos/blog.dto';
 
 @Injectable()
 export class BlogsService {
@@ -29,9 +29,7 @@ export class BlogsService {
   }
 
   async findAll(): Promise<BlogsUserPopulated[]> {
-    const pipeline: PipelineStage[] = [];
-
-    pipeline.push(
+    const pipeline: PipelineStage[] = [
       {
         $lookup: {
           from: 'users',
@@ -65,12 +63,12 @@ export class BlogsService {
           user: 1,
         },
       },
-    );
+    ];
 
     return await this.blogsModel.aggregate(pipeline);
   }
 
-  async findByField(filter: FilterQuery<Blog>): Promise<IBlog[]> {
+  async findMany(filter: FilterQuery<Blog>): Promise<IBlog[]> {
     return await this.blogsModel.find(filter).select({ user: 0 }).lean();
   }
 }

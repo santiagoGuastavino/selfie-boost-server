@@ -30,13 +30,14 @@ import { UsersService } from '../users/users.service';
 import { AuthService } from './auth.service';
 import { RefreshAccessTokenDto } from './dtos/refresh-access-token.dto';
 import { ChangePasswordDto } from './dtos/change-password.dto';
-import { MailerService } from 'src/common/services/mailer/mailer.service';
+import { EmailService } from 'src/services/email/email.service';
 
 @Controller('auth')
 export class AuthController {
   constructor(
-    private authService: AuthService,
-    private usersService: UsersService,
+    private readonly authService: AuthService,
+    private readonly usersService: UsersService,
+    private readonly emailService: EmailService,
   ) {}
 
   @Post('login')
@@ -169,15 +170,9 @@ export class AuthController {
         passwordRecoveryCode: Math.floor(100000 + Math.random() * 900000),
       };
 
-      const savedUser = await this.usersService.create(newUser);
+      const savedUser: IUser = await this.usersService.create(newUser);
 
-      const mailer = new MailerService();
-      mailer.caller = 'auth.signup';
-      mailer.recipientEmail = savedUser.email;
-      mailer.recipientFirstName = savedUser.firstName;
-      mailer.recipientLastName = savedUser.lastName;
-      mailer.code = savedUser.activationCode;
-      await mailer.sendEmail();
+      await this.emailService.sendAuthEmail(savedUser, 'signup');
 
       return response;
     } catch (error) {
@@ -509,20 +504,14 @@ export class AuthController {
 
       const newCode = Math.floor(100000 + Math.random() * 900000);
 
-      await this.usersService.updateOne(
+      const updatedUser: IUser = await this.usersService.updateOne(
         { _id: userRequiringCode._id },
         {
           activationCode: newCode,
         },
       );
 
-      const mailer = new MailerService();
-      mailer.caller = 'auth.send-activation-code';
-      mailer.recipientEmail = userRequiringCode.email;
-      mailer.recipientFirstName = userRequiringCode.firstName;
-      mailer.recipientLastName = userRequiringCode.lastName;
-      mailer.code = newCode;
-      await mailer.sendEmail();
+      await this.emailService.sendAuthEmail(updatedUser, 'activation-code');
 
       return response;
     } catch (error) {
@@ -584,20 +573,14 @@ export class AuthController {
 
       const newCode = Math.floor(100000 + Math.random() * 900000);
 
-      await this.usersService.updateOne(
+      const updatedUser: IUser = await this.usersService.updateOne(
         { _id: userRequiringCode._id },
         {
           passwordRecoveryCode: newCode,
         },
       );
 
-      const mailer = new MailerService();
-      mailer.caller = 'auth.send-password-recovery-code';
-      mailer.recipientEmail = userRequiringCode.email;
-      mailer.recipientFirstName = userRequiringCode.firstName;
-      mailer.recipientLastName = userRequiringCode.lastName;
-      mailer.code = newCode;
-      await mailer.sendEmail();
+      await this.emailService.sendAuthEmail(updatedUser, 'password-recovery');
 
       return response;
     } catch (error) {

@@ -20,7 +20,7 @@ export class UsersService {
   async updateOne(
     filter: FilterQuery<User>,
     update: UpdateQuery<User>,
-  ): Promise<void> {
-    await this.usersModel.findOneAndUpdate(filter, update);
+  ): Promise<IUser> {
+    return await this.usersModel.findOneAndUpdate(filter, update).lean();
   }
 }
