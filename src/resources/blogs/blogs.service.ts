@@ -9,15 +9,15 @@ import { BlogsUserPopulated } from './dtos/blog.dto';
 export class BlogsService {
   constructor(@InjectModel(Blog.name) private blogsModel: Model<Blog>) {}
 
-  async findOne(filter: FilterQuery<Blog>): Promise<IBlog> {
+  public async findOne(filter: FilterQuery<Blog>): Promise<IBlog> {
     return await this.blogsModel.findOne(filter).select({ user: 0 }).lean();
   }
 
-  async create(payload: any): Promise<void> {
+  public async insert(payload: any): Promise<void> {
     await this.blogsModel.create(payload);
   }
 
-  async update(
+  public async update(
     filter: FilterQuery<Blog>,
     update: UpdateQuery<Blog>,
   ): Promise<void> {

@@ -23,7 +23,6 @@ import { ReadOneByIdDto } from './dtos/read-one.dto';
 import { UpdateBlogDto } from './dtos/update-blog.dto';
 import { ObjectId } from 'mongodb';
 import { IBlog } from 'src/model/interfaces/blog.interface';
-import { Exceptions } from 'src/common/enums/exceptions.enum';
 import { I18n, I18nContext } from 'nestjs-i18n';
 import { TransformToBufferPipe } from 'src/common/pipes/transform-to-buffer.pipe';
 import { UsersService } from '../users/users.service';
@@ -39,6 +38,7 @@ export class BlogsController {
     private awsService: AWSService,
   ) {}
 
+  /*
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @UseGuards(JwtAuthGuard)
@@ -282,4 +282,5 @@ export class BlogsController {
       }
     }
   }
+  */
 }

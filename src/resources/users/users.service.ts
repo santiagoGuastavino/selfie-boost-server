@@ -9,18 +9,22 @@ import { SaveUser } from './dtos/save-user.dto';
 export class UsersService {
   constructor(@InjectModel(User.name) private usersModel: Model<User>) {}
 
-  async findOne(filter: FilterQuery<User>): Promise<IUser> {
+  public async findOne(filter: FilterQuery<User>): Promise<IUser> {
     return await this.usersModel.findOne(filter).lean();
   }
 
-  async create(payload: SaveUser): Promise<IUser> {
+  public async insertAndReturn(payload: SaveUser): Promise<IUser> {
     return await this.usersModel.create(payload);
   }
 
-  async updateOne(
+  public async updateOne(
     filter: FilterQuery<User>,
     update: UpdateQuery<User>,
   ): Promise<IUser> {
-    return await this.usersModel.findOneAndUpdate(filter, update).lean();
+    return await this.usersModel
+      .findOneAndUpdate(filter, update, {
+        returnOriginal: false,
+      })
+      .lean();
   }
 }

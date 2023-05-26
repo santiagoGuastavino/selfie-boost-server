@@ -1,12 +1,10 @@
 {
-  "ALREADY_EXISTS": "The provided {property} is already taken.",
-  "NOT_FOUND": "The provided {property} was not found.",
-  "WRONG_CREDENTIALS": "Invalid credentials. Password doesn't match.",
-  "REFRESH_TOKEN_EXPIRED": "Refresh token expired.",
+  "ALREADY_EXISTS": "The provided {property} is already in use.",
+  "NOT_FOUND": "The provided {entity} was not found.",
+  "WRONG_PASSWORD": "Invalid password. Password doesn't match.",
+  "CREDENTIALS_EXPIRED": "The provided refresh token has expired.",
   "ALREADY_ACTIVATED": "The provided email is related to an account that has already been activated.",
   "NOT_ACTIVATED": "The provided email is related to an account that hasn't been be activated.",
-  "WRONG_ACTIVATION_CODE": "Provided activation code {code} doesn't match.",
-  "WRONG_PASSWORD_RECOVERY_CODE": "Password recovery code {code} doesn't match.",
-  "SAME_PASSWORD": "The provided password is the same as the old one.",
-  "WRONG_USER": "The user trying to action is not allowed to do so."
+  "WRONG_CODE": "The provided value for {property} doesn't match",
+  "SAME_PASSWORD": "The provided password is the same as the old one."
 }

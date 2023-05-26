@@ -19,7 +19,5 @@ import { I18nModule } from './i18n/i18n.module';
     UsersModule,
     BlogsModule,
   ],
-  controllers: [],
-  providers: [],
 })
 export class AppModule {}
